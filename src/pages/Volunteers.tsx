@@ -1,21 +1,145 @@
-import { Users, Calendar, Clock, AlertTriangle } from 'lucide-react';
+import { Users, Calendar, Clock, AlertTriangle, Mail, Phone, MapPin } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
 import { Badge } from '@/components/ui/badge';
 import { mockShelters } from '@/data/mockData';
 import { cn } from '@/lib/utils';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
-const volunteerShifts = [
-  { id: 1, name: 'Sarah Johnson', shelter: 'Hope Haven Center', shift: 'Evening', status: 'active' },
-  { id: 2, name: 'Michael Chen', shelter: 'Sunrise Shelter', shift: 'Night', status: 'active' },
-  { id: 3, name: 'Emily Davis', shelter: 'Safe Harbor House', shift: 'Morning', status: 'upcoming' },
-  { id: 4, name: 'James Wilson', shelter: 'New Beginnings Refuge', shift: 'Evening', status: 'active' },
-  { id: 5, name: 'Maria Garcia', shelter: 'Community Care Center', shift: 'Night', status: 'completed' },
+interface Volunteer {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  shelter: string;
+  role: string;
+  schedule: string;
+  shift: string;
+  status: 'active' | 'upcoming' | 'completed' | 'off-duty';
+  hoursThisMonth: number;
+  startDate: string;
+}
+
+const volunteers: Volunteer[] = [
+  { 
+    id: 1, 
+    name: 'Sarah Johnson', 
+    email: 'sarah.j@email.com',
+    phone: '(555) 123-4567',
+    shelter: 'Hope Haven Center', 
+    role: 'Shift Lead',
+    schedule: 'Mon, Wed, Fri',
+    shift: 'Evening (4pm-10pm)', 
+    status: 'active',
+    hoursThisMonth: 48,
+    startDate: '2024-01-15'
+  },
+  { 
+    id: 2, 
+    name: 'Michael Chen', 
+    email: 'mchen@email.com',
+    phone: '(555) 234-5678',
+    shelter: 'Sunrise Shelter', 
+    role: 'Kitchen Staff',
+    schedule: 'Tue, Thu, Sat',
+    shift: 'Night (10pm-6am)', 
+    status: 'active',
+    hoursThisMonth: 32,
+    startDate: '2024-03-10'
+  },
+  { 
+    id: 3, 
+    name: 'Emily Davis', 
+    email: 'emily.davis@email.com',
+    phone: '(555) 345-6789',
+    shelter: 'Safe Harbor House', 
+    role: 'Intake Coordinator',
+    schedule: 'Mon-Fri',
+    shift: 'Morning (6am-12pm)', 
+    status: 'upcoming',
+    hoursThisMonth: 60,
+    startDate: '2023-11-22'
+  },
+  { 
+    id: 4, 
+    name: 'James Wilson', 
+    email: 'jwilson@email.com',
+    phone: '(555) 456-7890',
+    shelter: 'New Beginnings Refuge', 
+    role: 'Security',
+    schedule: 'Fri, Sat, Sun',
+    shift: 'Evening (4pm-10pm)', 
+    status: 'active',
+    hoursThisMonth: 24,
+    startDate: '2024-02-05'
+  },
+  { 
+    id: 5, 
+    name: 'Maria Garcia', 
+    email: 'mgarcia@email.com',
+    phone: '(555) 567-8901',
+    shelter: 'Community Care Center', 
+    role: 'Case Worker',
+    schedule: 'Mon, Wed',
+    shift: 'Night (10pm-6am)', 
+    status: 'completed',
+    hoursThisMonth: 16,
+    startDate: '2024-04-18'
+  },
+  { 
+    id: 6, 
+    name: 'David Kim', 
+    email: 'dkim@email.com',
+    phone: '(555) 678-9012',
+    shelter: 'Hope Haven Center', 
+    role: 'Medical Support',
+    schedule: 'Tue, Thu',
+    shift: 'Morning (6am-12pm)', 
+    status: 'off-duty',
+    hoursThisMonth: 20,
+    startDate: '2023-09-01'
+  },
+  { 
+    id: 7, 
+    name: 'Lisa Thompson', 
+    email: 'lthompson@email.com',
+    phone: '(555) 789-0123',
+    shelter: 'Sunrise Shelter', 
+    role: 'Shift Lead',
+    schedule: 'Wed, Fri, Sun',
+    shift: 'Evening (4pm-10pm)', 
+    status: 'active',
+    hoursThisMonth: 36,
+    startDate: '2024-01-20'
+  },
 ];
+
+const getStatusStyles = (status: Volunteer['status']) => {
+  switch (status) {
+    case 'active':
+      return 'bg-success/20 text-success border-success/30';
+    case 'upcoming':
+      return 'bg-warning/20 text-warning border-warning/30';
+    case 'completed':
+      return 'bg-muted text-muted-foreground border-border';
+    case 'off-duty':
+      return 'bg-secondary text-secondary-foreground border-border';
+    default:
+      return 'bg-muted text-muted-foreground border-border';
+  }
+};
 
 export default function Volunteers() {
   const totalVolunteers = mockShelters.reduce((sum, s) => sum + s.volunteers, 0);
-  const activeVolunteers = volunteerShifts.filter(v => v.status === 'active').length;
+  const activeVolunteers = volunteers.filter(v => v.status === 'active').length;
   const sheltersNeedingHelp = mockShelters.filter(s => s.volunteers < 5).length;
+  const totalHoursThisMonth = volunteers.reduce((sum, v) => sum + v.hoursThisMonth, 0);
 
   return (
     <div className="space-y-8">
@@ -38,8 +162,8 @@ export default function Volunteers() {
           icon={Clock}
         />
         <StatCard
-          title="Shifts Today"
-          value={12}
+          title="Hours This Month"
+          value={totalHoursThisMonth}
           icon={Calendar}
         />
         <div className="stat-card">
@@ -55,51 +179,79 @@ export default function Volunteers() {
         </div>
       </div>
 
-      {/* Volunteer Shifts Table */}
+      {/* Volunteer Directory Table */}
       <div className="stat-card">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Today's Shifts</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Volunteer Directory</h3>
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Volunteer</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Shelter</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Shift</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {volunteerShifts.map((volunteer) => (
-                <tr key={volunteer.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                  <td className="py-3 px-4">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead>Volunteer</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Assigned Shelter</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Schedule</TableHead>
+                <TableHead>Current Shift</TableHead>
+                <TableHead>Hours (Month)</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {volunteers.map((volunteer) => (
+                <TableRow key={volunteer.id} className="border-border/50 hover:bg-secondary/30">
+                  <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         <span className="text-sm font-medium text-primary">
                           {volunteer.name.split(' ').map(n => n[0]).join('')}
                         </span>
                       </div>
-                      <span className="font-medium text-foreground">{volunteer.name}</span>
+                      <div>
+                        <p className="font-medium text-foreground">{volunteer.name}</p>
+                        <p className="text-xs text-muted-foreground">Since {new Date(volunteer.startDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</p>
+                      </div>
                     </div>
-                  </td>
-                  <td className="py-3 px-4 text-muted-foreground">{volunteer.shelter}</td>
-                  <td className="py-3 px-4 text-muted-foreground">{volunteer.shift}</td>
-                  <td className="py-3 px-4">
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Mail className="h-3.5 w-3.5" />
+                        <span>{volunteer.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Phone className="h-3.5 w-3.5" />
+                        <span>{volunteer.phone}</span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-foreground">{volunteer.shelter}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="border-primary/30 text-primary bg-primary/10">
+                      {volunteer.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{volunteer.schedule}</TableCell>
+                  <TableCell className="text-muted-foreground">{volunteer.shift}</TableCell>
+                  <TableCell>
+                    <span className="font-medium text-foreground">{volunteer.hoursThisMonth}h</span>
+                  </TableCell>
+                  <TableCell>
                     <Badge 
                       variant="outline"
-                      className={cn(
-                        "border",
-                        volunteer.status === 'active' && "bg-success/20 text-success border-success/30",
-                        volunteer.status === 'upcoming' && "bg-warning/20 text-warning border-warning/30",
-                        volunteer.status === 'completed' && "bg-muted text-muted-foreground border-border"
-                      )}
+                      className={cn("border capitalize", getStatusStyles(volunteer.status))}
                     >
-                      {volunteer.status}
+                      {volunteer.status.replace('-', ' ')}
                     </Badge>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
