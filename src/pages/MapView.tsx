@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Bed, Users, Clock, Navigation, Locate, Settings, Route, AlertCircle } from 'lucide-react';
+import { MapPin, Bed, Users, Clock, Navigation, Locate, Route } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { mockShelters } from '@/data/mockData';
 import { Shelter } from '@/types/shelter';
 import { cn } from '@/lib/utils';
-import MapboxMap from '@/components/MapboxMap';
+import LeafletMap from '@/components/LeafletMap';
 import { calculateDistance, formatDistance, getNearestShelters } from '@/lib/geoUtils';
 import { toast } from 'sonner';
 
@@ -25,32 +24,12 @@ const statusConfig = {
   },
 };
 
-const MAPBOX_TOKEN_KEY = 'nightnest_mapbox_token';
-
 export default function MapView() {
   const [selectedShelter, setSelectedShelter] = useState<Shelter | null>(null);
-  const [mapboxToken, setMapboxToken] = useState<string>('');
-  const [tokenInput, setTokenInput] = useState<string>('');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showRoute, setShowRoute] = useState(false);
   const [sheltersWithDistance, setSheltersWithDistance] = useState<(Shelter & { distance?: number })[]>(mockShelters);
   const [isLocating, setIsLocating] = useState(false);
-  const [tokenError, setTokenError] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Load saved token on mount
-  useEffect(() => {
-    try {
-      const savedToken = localStorage.getItem(MAPBOX_TOKEN_KEY);
-      if (savedToken && savedToken.startsWith('pk.')) {
-        setMapboxToken(savedToken);
-        setTokenInput(savedToken);
-      }
-    } catch (error) {
-      console.error('Error loading token from localStorage:', error);
-    }
-    setIsLoading(false);
-  }, []);
 
   // Update distances when user location changes
   useEffect(() => {
@@ -59,46 +38,6 @@ export default function MapView() {
       setSheltersWithDistance(withDistances);
     }
   }, [userLocation]);
-
-  const validateToken = (token: string): boolean => {
-    // Mapbox public tokens start with 'pk.'
-    if (!token || !token.startsWith('pk.')) {
-      setTokenError('Token must start with "pk." (public token)');
-      return false;
-    }
-    if (token.length < 50) {
-      setTokenError('Token appears too short. Please check your token.');
-      return false;
-    }
-    setTokenError('');
-    return true;
-  };
-
-  const handleSaveToken = () => {
-    const trimmedToken = tokenInput.trim();
-    if (validateToken(trimmedToken)) {
-      try {
-        localStorage.setItem(MAPBOX_TOKEN_KEY, trimmedToken);
-        setMapboxToken(trimmedToken);
-        toast.success('Mapbox token saved successfully');
-      } catch (error) {
-        toast.error('Failed to save token');
-        console.error('Error saving token:', error);
-      }
-    }
-  };
-
-  const handleClearToken = () => {
-    try {
-      localStorage.removeItem(MAPBOX_TOKEN_KEY);
-      setMapboxToken('');
-      setTokenInput('');
-      setTokenError('');
-      toast.info('Token cleared');
-    } catch (error) {
-      console.error('Error clearing token:', error);
-    }
-  };
 
   const handleGetLocation = () => {
     setIsLocating(true);
@@ -135,71 +74,6 @@ export default function MapView() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (!mapboxToken) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Map View</h1>
-          <p className="text-muted-foreground mt-1">Configure Mapbox to view shelter locations</p>
-        </div>
-
-        <div className="stat-card max-w-lg space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-primary/20">
-              <Settings className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">Mapbox Setup Required</h3>
-              <p className="text-sm text-muted-foreground">Enter your Mapbox public token to enable maps</p>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Input
-                type="text"
-                placeholder="pk.eyJ1Ijoi..."
-                value={tokenInput}
-                onChange={(e) => {
-                  setTokenInput(e.target.value);
-                  setTokenError('');
-                }}
-                className={cn("font-mono text-sm", tokenError && "border-danger")}
-              />
-              {tokenError && (
-                <div className="flex items-center gap-2 text-danger text-sm">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{tokenError}</span>
-                </div>
-              )}
-            </div>
-            <Button onClick={handleSaveToken} className="w-full" disabled={!tokenInput.trim()}>
-              Save Token
-            </Button>
-          </div>
-
-          <div className="p-3 rounded-lg bg-secondary/50 space-y-2">
-            <p className="text-sm font-medium text-foreground">How to get your token:</p>
-            <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-              <li>Go to <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">mapbox.com</a> and create a free account</li>
-              <li>Navigate to Account → Tokens</li>
-              <li>Copy your Default public token (starts with "pk.")</li>
-              <li>Paste it above and click Save</li>
-            </ol>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -208,25 +82,22 @@ export default function MapView() {
           <h1 className="text-3xl font-bold text-foreground">Map View</h1>
           <p className="text-muted-foreground mt-1">Real-time shelter locations with GPS navigation</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleGetLocation}
-            disabled={isLocating}
-          >
-            <Locate className="h-4 w-4 mr-2" />
-            {isLocating ? 'Locating...' : 'My Location'}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClearToken}
-            title="Clear Mapbox token"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleGetLocation}
+          disabled={isLocating}
+        >
+          <Locate className="h-4 w-4 mr-2" />
+          {isLocating ? 'Locating...' : 'My Location'}
+        </Button>
+      </div>
+
+      {/* Free Map Notice */}
+      <div className="p-3 rounded-lg bg-success/10 border border-success/20">
+        <p className="text-sm text-success">
+          ✓ Using OpenStreetMap - completely free, no API key required!
+        </p>
       </div>
 
       {/* Legend */}
@@ -255,11 +126,10 @@ export default function MapView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Map Area */}
         <div className="lg:col-span-2 stat-card min-h-[500px] relative p-0 overflow-hidden">
-          <MapboxMap
+          <LeafletMap
             shelters={mockShelters}
             selectedShelter={selectedShelter}
             onShelterSelect={setSelectedShelter}
-            mapboxToken={mapboxToken}
             userLocation={userLocation}
             showRoute={showRoute}
           />
