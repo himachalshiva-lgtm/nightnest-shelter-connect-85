@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Bed, Users, Clock, Navigation, Locate, Settings, Route } from 'lucide-react';
+import { MapPin, Bed, Users, Clock, Navigation, Locate, Settings, Route, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,13 +35,21 @@ export default function MapView() {
   const [showRoute, setShowRoute] = useState(false);
   const [sheltersWithDistance, setSheltersWithDistance] = useState<(Shelter & { distance?: number })[]>(mockShelters);
   const [isLocating, setIsLocating] = useState(false);
+  const [tokenError, setTokenError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load saved token
+  // Load saved token on mount
   useEffect(() => {
-    const savedToken = localStorage.getItem(MAPBOX_TOKEN_KEY);
-    if (savedToken) {
-      setMapboxToken(savedToken);
+    try {
+      const savedToken = localStorage.getItem(MAPBOX_TOKEN_KEY);
+      if (savedToken && savedToken.startsWith('pk.')) {
+        setMapboxToken(savedToken);
+        setTokenInput(savedToken);
+      }
+    } catch (error) {
+      console.error('Error loading token from localStorage:', error);
     }
+    setIsLoading(false);
   }, []);
 
   // Update distances when user location changes
@@ -52,11 +60,43 @@ export default function MapView() {
     }
   }, [userLocation]);
 
+  const validateToken = (token: string): boolean => {
+    // Mapbox public tokens start with 'pk.'
+    if (!token || !token.startsWith('pk.')) {
+      setTokenError('Token must start with "pk." (public token)');
+      return false;
+    }
+    if (token.length < 50) {
+      setTokenError('Token appears too short. Please check your token.');
+      return false;
+    }
+    setTokenError('');
+    return true;
+  };
+
   const handleSaveToken = () => {
-    if (tokenInput.trim()) {
-      localStorage.setItem(MAPBOX_TOKEN_KEY, tokenInput.trim());
-      setMapboxToken(tokenInput.trim());
-      toast.success('Mapbox token saved successfully');
+    const trimmedToken = tokenInput.trim();
+    if (validateToken(trimmedToken)) {
+      try {
+        localStorage.setItem(MAPBOX_TOKEN_KEY, trimmedToken);
+        setMapboxToken(trimmedToken);
+        toast.success('Mapbox token saved successfully');
+      } catch (error) {
+        toast.error('Failed to save token');
+        console.error('Error saving token:', error);
+      }
+    }
+  };
+
+  const handleClearToken = () => {
+    try {
+      localStorage.removeItem(MAPBOX_TOKEN_KEY);
+      setMapboxToken('');
+      setTokenInput('');
+      setTokenError('');
+      toast.info('Token cleared');
+    } catch (error) {
+      console.error('Error clearing token:', error);
     }
   };
 
@@ -95,6 +135,14 @@ export default function MapView() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   if (!mapboxToken) {
     return (
       <div className="space-y-6">
@@ -115,30 +163,38 @@ export default function MapView() {
           </div>
 
           <div className="space-y-3">
-            <Input
-              type="text"
-              placeholder="pk.eyJ1Ijoi..."
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              className="font-mono text-sm"
-            />
-            <Button onClick={handleSaveToken} className="w-full">
+            <div className="space-y-2">
+              <Input
+                type="text"
+                placeholder="pk.eyJ1Ijoi..."
+                value={tokenInput}
+                onChange={(e) => {
+                  setTokenInput(e.target.value);
+                  setTokenError('');
+                }}
+                className={cn("font-mono text-sm", tokenError && "border-danger")}
+              />
+              {tokenError && (
+                <div className="flex items-center gap-2 text-danger text-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{tokenError}</span>
+                </div>
+              )}
+            </div>
+            <Button onClick={handleSaveToken} className="w-full" disabled={!tokenInput.trim()}>
               Save Token
             </Button>
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            Get your free public token at{' '}
-            <a
-              href="https://mapbox.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              mapbox.com
-            </a>{' '}
-            → Account → Tokens
-          </p>
+          <div className="p-3 rounded-lg bg-secondary/50 space-y-2">
+            <p className="text-sm font-medium text-foreground">How to get your token:</p>
+            <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+              <li>Go to <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">mapbox.com</a> and create a free account</li>
+              <li>Navigate to Account → Tokens</li>
+              <li>Copy your Default public token (starts with "pk.")</li>
+              <li>Paste it above and click Save</li>
+            </ol>
+          </div>
         </div>
       </div>
     );
@@ -165,10 +221,8 @@ export default function MapView() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              setMapboxToken('');
-              localStorage.removeItem(MAPBOX_TOKEN_KEY);
-            }}
+            onClick={handleClearToken}
+            title="Clear Mapbox token"
           >
             <Settings className="h-4 w-4" />
           </Button>
