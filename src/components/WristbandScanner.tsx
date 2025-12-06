@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Scan, QrCode, Camera, CameraOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
 
 interface WristbandScannerProps {
   open: boolean;
@@ -15,73 +15,100 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
   const [manualId, setManualId] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [scanStatus, setScanStatus] = useState<string>('Ready to scan');
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const isScanningRef = useRef(false);
+  const containerIdRef = useRef(`qr-reader-${Date.now()}`);
 
-  // Safe stop function that checks scanner state
-  const safeStopScanner = async () => {
-    if (scannerRef.current && isScanningRef.current) {
+  // Safe stop function
+  const safeStopScanner = useCallback(async () => {
+    if (scannerRef.current) {
       try {
-        await scannerRef.current.stop();
+        const state = scannerRef.current.getState();
+        if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+          await scannerRef.current.stop();
+          console.log('Scanner stopped successfully');
+        }
       } catch (e) {
-        // Ignore stop errors - scanner might already be stopped
         console.log('Scanner stop handled:', e);
       }
+      try {
+        scannerRef.current.clear();
+      } catch (e) {
+        // Ignore clear errors
+      }
+      scannerRef.current = null;
     }
-    isScanningRef.current = false;
     setIsScanning(false);
-  };
+    setScanStatus('Ready to scan');
+  }, []);
 
-  // Cleanup scanner when dialog closes
+  // Cleanup when dialog closes
   useEffect(() => {
     if (!open) {
       safeStopScanner();
       setCameraError(null);
     }
-  }, [open]);
+  }, [open, safeStopScanner]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       safeStopScanner();
     };
-  }, []);
+  }, [safeStopScanner]);
 
   const startCameraScanning = async () => {
     setCameraError(null);
+    setScanStatus('Starting camera...');
     
     try {
-      // Create new scanner instance if needed
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode('qr-reader');
-      }
-
+      // Stop any existing scanner first
+      await safeStopScanner();
+      
+      // Small delay to ensure DOM is ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Create new scanner instance
+      scannerRef.current = new Html5Qrcode(containerIdRef.current);
+      
       setIsScanning(true);
-      isScanningRef.current = true;
+      setScanStatus('Scanning for QR codes...');
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 200, height: 200 },
+        aspectRatio: 1.0,
+      };
 
       await scannerRef.current.start(
         { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-        },
-        (decodedText) => {
-          // QR code scanned successfully
-          onScan(decodedText);
+        config,
+        (decodedText, decodedResult) => {
+          console.log('QR Code scanned:', decodedText, decodedResult);
+          setScanStatus(`Scanned: ${decodedText}`);
           safeStopScanner();
+          onScan(decodedText);
         },
-        () => {
-          // QR code not detected - this is normal, keep scanning
+        (errorMessage) => {
+          // This fires constantly when no QR is detected - don't log
         }
       );
+      
+      console.log('Scanner started successfully');
+      setScanStatus('Point camera at QR code...');
+      
     } catch (err) {
-      isScanningRef.current = false;
+      console.error('Scanner start error:', err);
       setIsScanning(false);
+      setScanStatus('Failed to start');
+      
       if (err instanceof Error) {
-        if (err.message.includes('Permission')) {
-          setCameraError('Camera permission denied. Please allow camera access.');
-        } else if (err.message.includes('NotFoundError')) {
+        if (err.message.includes('Permission') || err.message.includes('NotAllowed')) {
+          setCameraError('Camera permission denied. Please allow camera access in your browser settings.');
+        } else if (err.message.includes('NotFound') || err.message.includes('DevicesNotFound')) {
           setCameraError('No camera found on this device.');
+        } else if (err.message.includes('NotReadable') || err.message.includes('TrackStartError')) {
+          setCameraError('Camera is in use by another application.');
         } else {
           setCameraError(`Camera error: ${err.message}`);
         }
@@ -96,7 +123,6 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
   };
 
   const handleSimulateScan = () => {
-    // Generate ID in format: NN-USER-XXXX
     const randomNum = Math.floor(1000 + Math.random() * 9000);
     const randomId = `NN-USER-${randomNum}`;
     onScan(randomId);
@@ -129,11 +155,14 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
         
         <div className="space-y-4 py-4">
           {/* Camera Scanner Area */}
-          <div className="relative aspect-square max-w-xs mx-auto rounded-2xl border-2 border-dashed border-primary/30 bg-secondary/50 overflow-hidden">
-            <div id="qr-reader" className="w-full h-full" />
+          <div className="relative mx-auto rounded-2xl border-2 border-dashed border-primary/30 bg-secondary/50 overflow-hidden" style={{ width: '280px', height: '280px' }}>
+            <div 
+              id={containerIdRef.current} 
+              style={{ width: '100%', height: '100%' }}
+            />
             
             {!isScanning && (
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center bg-secondary/90">
                 <div className="text-center p-6">
                   <QrCode className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                   <p className="text-sm text-muted-foreground">
@@ -143,6 +172,11 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
               </div>
             )}
           </div>
+
+          {/* Scan status */}
+          <p className="text-center text-sm text-muted-foreground">
+            {scanStatus}
+          </p>
 
           {cameraError && (
             <div className="text-sm text-destructive text-center bg-destructive/10 p-3 rounded-lg">
@@ -199,6 +233,7 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
               value={manualId}
               onChange={(e) => setManualId(e.target.value)}
               className="bg-secondary border-border"
+              onKeyDown={(e) => e.key === 'Enter' && handleManualEntry()}
             />
             <Button variant="secondary" onClick={handleManualEntry}>
               Enter
