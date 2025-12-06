@@ -88,7 +88,7 @@ export const mockDashboardStats: DashboardStats = {
 
 export const mockWristbandProfile: WristbandProfile = {
   id: '1',
-  wristbandId: 'WB-2024-0847',
+  wristbandId: 'NN-USER-0847',
   lastCheckIn: '2024-01-14',
   lastShelter: 'Hope Haven Center',
   healthNotes: [
