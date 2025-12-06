@@ -5,10 +5,11 @@ import { ShelterCard } from '@/components/ShelterCard';
 import { ScanButton } from '@/components/ScanButton';
 import { WristbandScanner } from '@/components/WristbandScanner';
 import { WristbandProfileView } from '@/components/WristbandProfile';
-import { mockDashboardStats, mockShelters, generateWristbandProfile } from '@/data/mockData';
+import { mockDashboardStats, mockShelters } from '@/data/mockData';
 import { WristbandProfile } from '@/types/shelter';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useWristbandData } from '@/hooks/useWristbandData';
 
 export default function Dashboard() {
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { getOrCreateWristband, recordCheckIn, loading } = useWristbandData();
 
   // Get user location on mount
   useEffect(() => {
@@ -38,19 +40,54 @@ export default function Dashboard() {
     }
   }, []);
 
-  const handleScan = (wristbandId: string) => {
+  const handleScan = async (wristbandId: string) => {
     setScannerOpen(false);
-    const profile = generateWristbandProfile(wristbandId, userLocation || undefined);
-    setCurrentProfile(profile);
-    setProfileOpen(true);
+    
+    toast({
+      title: "Looking up wristband...",
+      description: `Searching for ${wristbandId}`,
+    });
+
+    const profile = await getOrCreateWristband(wristbandId, userLocation || undefined);
+    
+    if (profile) {
+      setCurrentProfile(profile);
+      setProfileOpen(true);
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to load wristband data. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleCheckIn = () => {
+  const handleCheckIn = async () => {
+    if (!currentProfile || !currentProfile.recommendedShelter) {
+      setProfileOpen(false);
+      return;
+    }
+
+    const success = await recordCheckIn(
+      currentProfile.wristbandId,
+      currentProfile.recommendedShelter
+    );
+
     setProfileOpen(false);
-    toast({
-      title: "Check-in Successful",
-      description: `${currentProfile?.wristbandId} has been checked in to ${currentProfile?.recommendedShelter?.name}.`,
-    });
+    
+    if (success) {
+      toast({
+        title: "Check-in Successful",
+        description: `${currentProfile.wristbandId} has been checked in to ${currentProfile.recommendedShelter.name}.`,
+      });
+    } else {
+      toast({
+        title: "Check-in Failed",
+        description: "Could not record check-in. Please try again.",
+        variant: "destructive",
+      });
+    }
+    
     setCurrentProfile(null);
   };
 

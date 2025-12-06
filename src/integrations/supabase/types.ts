@@ -14,7 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      check_in_history: {
+        Row: {
+          check_in_time: string
+          check_out_time: string | null
+          id: string
+          notes: string | null
+          shelter_id: string
+          shelter_name: string
+          wristband_id: string
+        }
+        Insert: {
+          check_in_time?: string
+          check_out_time?: string | null
+          id?: string
+          notes?: string | null
+          shelter_id: string
+          shelter_name: string
+          wristband_id: string
+        }
+        Update: {
+          check_in_time?: string
+          check_out_time?: string | null
+          id?: string
+          notes?: string | null
+          shelter_id?: string
+          shelter_name?: string
+          wristband_id?: string
+        }
+        Relationships: []
+      }
+      wristbands: {
+        Row: {
+          check_in_count: number | null
+          created_at: string
+          health_notes: string[] | null
+          id: string
+          last_check_in: string | null
+          last_shelter_name: string | null
+          updated_at: string
+          wristband_id: string
+        }
+        Insert: {
+          check_in_count?: number | null
+          created_at?: string
+          health_notes?: string[] | null
+          id?: string
+          last_check_in?: string | null
+          last_shelter_name?: string | null
+          updated_at?: string
+          wristband_id: string
+        }
+        Update: {
+          check_in_count?: number | null
+          created_at?: string
+          health_notes?: string[] | null
+          id?: string
+          last_check_in?: string | null
+          last_shelter_name?: string | null
+          updated_at?: string
+          wristband_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
