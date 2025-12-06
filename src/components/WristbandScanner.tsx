@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Scan, QrCode, Camera, CameraOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Html5Qrcode } from 'html5-qrcode';
 
 interface WristbandScannerProps {
@@ -16,14 +16,26 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const isScanningRef = useRef(false);
+
+  // Safe stop function that checks scanner state
+  const safeStopScanner = async () => {
+    if (scannerRef.current && isScanningRef.current) {
+      try {
+        await scannerRef.current.stop();
+      } catch (e) {
+        // Ignore stop errors - scanner might already be stopped
+        console.log('Scanner stop handled:', e);
+      }
+    }
+    isScanningRef.current = false;
+    setIsScanning(false);
+  };
 
   // Cleanup scanner when dialog closes
   useEffect(() => {
-    if (!open && scannerRef.current) {
-      scannerRef.current.stop().catch(() => {});
-      scannerRef.current = null;
-      setIsScanning(false);
+    if (!open) {
+      safeStopScanner();
       setCameraError(null);
     }
   }, [open]);
@@ -31,9 +43,7 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-      }
+      safeStopScanner();
     };
   }, []);
 
@@ -41,11 +51,13 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
     setCameraError(null);
     
     try {
+      // Create new scanner instance if needed
       if (!scannerRef.current) {
         scannerRef.current = new Html5Qrcode('qr-reader');
       }
 
       setIsScanning(true);
+      isScanningRef.current = true;
 
       await scannerRef.current.start(
         { facingMode: 'environment' },
@@ -56,13 +68,14 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
         (decodedText) => {
           // QR code scanned successfully
           onScan(decodedText);
-          stopScanning();
+          safeStopScanner();
         },
         () => {
           // QR code not detected - this is normal, keep scanning
         }
       );
     } catch (err) {
+      isScanningRef.current = false;
       setIsScanning(false);
       if (err instanceof Error) {
         if (err.message.includes('Permission')) {
@@ -79,14 +92,7 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
   };
 
   const stopScanning = async () => {
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-      } catch (e) {
-        // Ignore stop errors
-      }
-    }
-    setIsScanning(false);
+    await safeStopScanner();
   };
 
   const handleSimulateScan = () => {
@@ -104,7 +110,7 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
   };
 
   const handleClose = () => {
-    stopScanning();
+    safeStopScanner();
     onClose();
   };
 
@@ -116,6 +122,9 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
             <Scan className="h-5 w-5 text-primary" />
             Scan Wristband
           </DialogTitle>
+          <DialogDescription>
+            Use your camera to scan a QR code or enter the wristband ID manually.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4 py-4">
