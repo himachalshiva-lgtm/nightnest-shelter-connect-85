@@ -66,31 +66,56 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
       await safeStopScanner();
       
       // Small delay to ensure DOM is ready
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Check if container exists
+      const container = document.getElementById(containerIdRef.current);
+      if (!container) {
+        throw new Error('Scanner container not found');
+      }
       
       // Create new scanner instance
-      scannerRef.current = new Html5Qrcode(containerIdRef.current);
+      scannerRef.current = new Html5Qrcode(containerIdRef.current, {
+        verbose: false,
+        formatsToSupport: undefined, // Support all formats
+      });
       
       setIsScanning(true);
-      setScanStatus('Scanning for QR codes...');
+      setScanStatus('Accessing camera...');
+
+      // Get available cameras first
+      const cameras = await Html5Qrcode.getCameras();
+      console.log('Available cameras:', cameras);
+      
+      if (cameras.length === 0) {
+        throw new Error('No cameras found');
+      }
 
       const config = {
-        fps: 10,
-        qrbox: { width: 200, height: 200 },
+        fps: 15,
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          const size = Math.floor(minEdge * 0.7);
+          return { width: size, height: size };
+        },
         aspectRatio: 1.0,
+        disableFlip: false,
       };
 
+      // Try back camera first, then any available camera
+      let cameraId = cameras.find(c => c.label.toLowerCase().includes('back'))?.id || cameras[0].id;
+
       await scannerRef.current.start(
-        { facingMode: 'environment' },
+        cameraId,
         config,
-        (decodedText, decodedResult) => {
-          console.log('QR Code scanned:', decodedText, decodedResult);
+        (decodedText) => {
+          console.log('QR Code scanned:', decodedText);
           setScanStatus(`Scanned: ${decodedText}`);
           safeStopScanner();
           onScan(decodedText);
         },
-        (errorMessage) => {
-          // This fires constantly when no QR is detected - don't log
+        () => {
+          // Silent - fires constantly when no QR detected
         }
       );
       
@@ -102,18 +127,16 @@ export function WristbandScanner({ open, onClose, onScan }: WristbandScannerProp
       setIsScanning(false);
       setScanStatus('Failed to start');
       
-      if (err instanceof Error) {
-        if (err.message.includes('Permission') || err.message.includes('NotAllowed')) {
-          setCameraError('Camera permission denied. Please allow camera access in your browser settings.');
-        } else if (err.message.includes('NotFound') || err.message.includes('DevicesNotFound')) {
-          setCameraError('No camera found on this device.');
-        } else if (err.message.includes('NotReadable') || err.message.includes('TrackStartError')) {
-          setCameraError('Camera is in use by another application.');
-        } else {
-          setCameraError(`Camera error: ${err.message}`);
-        }
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      
+      if (errorMsg.includes('Permission') || errorMsg.includes('NotAllowed')) {
+        setCameraError('Camera permission denied. Please allow camera access in your browser settings.');
+      } else if (errorMsg.includes('NotFound') || errorMsg.includes('No cameras')) {
+        setCameraError('No camera found on this device.');
+      } else if (errorMsg.includes('NotReadable') || errorMsg.includes('TrackStart')) {
+        setCameraError('Camera is in use by another application.');
       } else {
-        setCameraError('Failed to start camera. Try manual entry instead.');
+        setCameraError(`Camera error: ${errorMsg}`);
       }
     }
   };
