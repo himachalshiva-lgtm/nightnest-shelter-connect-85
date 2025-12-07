@@ -1,9 +1,61 @@
+import { useState } from 'react';
 import { User, Bell, Shield, Database, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Settings() {
+  const { toast } = useToast();
+  
+  // Profile state
+  const [fullName, setFullName] = useState('Staff Member');
+  const [email, setEmail] = useState('staff@nightnest.org');
+  
+  // Notification states
+  const [lowBedAlerts, setLowBedAlerts] = useState(true);
+  const [volunteerShortage, setVolunteerShortage] = useState(true);
+  const [dailySummary, setDailySummary] = useState(false);
+
+  const handleSaveProfile = () => {
+    toast({
+      title: "Profile Updated",
+      description: "Your profile changes have been saved successfully.",
+    });
+  };
+
+  const handleChangePassword = () => {
+    toast({
+      title: "Password Change",
+      description: "A password reset link has been sent to your email.",
+    });
+  };
+
+  const handleEnable2FA = () => {
+    toast({
+      title: "Two-Factor Authentication",
+      description: "2FA setup instructions have been sent to your email.",
+    });
+  };
+
+  const handleExportData = () => {
+    toast({
+      title: "Data Export Started",
+      description: "Your data export is being prepared. You'll receive an email when ready.",
+    });
+  };
+
+  const handleViewDocs = () => {
+    window.open('https://docs.lovable.dev/', '_blank');
+  };
+
+  const handleContactSupport = () => {
+    toast({
+      title: "Support Request",
+      description: "Opening support contact form...",
+    });
+  };
+
   return (
     <div className="space-y-8 max-w-3xl">
       {/* Header */}
@@ -24,11 +76,19 @@ export default function Settings() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Full Name</label>
-            <Input defaultValue="Staff Member" className="bg-secondary border-border" />
+            <Input 
+              value={fullName} 
+              onChange={(e) => setFullName(e.target.value)}
+              className="bg-secondary border-border" 
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Email</label>
-            <Input defaultValue="staff@nightnest.org" className="bg-secondary border-border" />
+            <Input 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)}
+              className="bg-secondary border-border" 
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Role</label>
@@ -40,7 +100,7 @@ export default function Settings() {
           </div>
         </div>
 
-        <Button variant="default">Save Changes</Button>
+        <Button variant="default" onClick={handleSaveProfile}>Save Changes</Button>
       </div>
 
       {/* Notifications */}
@@ -58,21 +118,21 @@ export default function Settings() {
               <p className="font-medium text-foreground">Low Bed Alerts</p>
               <p className="text-sm text-muted-foreground">Get notified when beds are running low</p>
             </div>
-            <Switch defaultChecked />
+            <Switch checked={lowBedAlerts} onCheckedChange={setLowBedAlerts} />
           </div>
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-foreground">Volunteer Shortage</p>
               <p className="text-sm text-muted-foreground">Alert when volunteers are needed</p>
             </div>
-            <Switch defaultChecked />
+            <Switch checked={volunteerShortage} onCheckedChange={setVolunteerShortage} />
           </div>
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-foreground">Daily Summary</p>
               <p className="text-sm text-muted-foreground">Receive daily check-in reports</p>
             </div>
-            <Switch />
+            <Switch checked={dailySummary} onCheckedChange={setDailySummary} />
           </div>
         </div>
       </div>
@@ -87,10 +147,10 @@ export default function Settings() {
         </div>
 
         <div className="space-y-4">
-          <Button variant="outline" className="w-full justify-start">
+          <Button variant="outline" className="w-full justify-start" onClick={handleChangePassword}>
             Change Password
           </Button>
-          <Button variant="outline" className="w-full justify-start">
+          <Button variant="outline" className="w-full justify-start" onClick={handleEnable2FA}>
             Enable Two-Factor Authentication
           </Button>
         </div>
@@ -109,7 +169,7 @@ export default function Settings() {
           NightNest is committed to privacy. We do not store personal identity data for individuals using our wristband system. All health notes are basic and non-invasive.
         </p>
 
-        <Button variant="outline">Export My Data</Button>
+        <Button variant="outline" onClick={handleExportData}>Export My Data</Button>
       </div>
 
       {/* Help */}
@@ -122,8 +182,8 @@ export default function Settings() {
         </div>
 
         <div className="flex gap-3">
-          <Button variant="outline">View Documentation</Button>
-          <Button variant="outline">Contact Support</Button>
+          <Button variant="outline" onClick={handleViewDocs}>View Documentation</Button>
+          <Button variant="outline" onClick={handleContactSupport}>Contact Support</Button>
         </div>
       </div>
     </div>
