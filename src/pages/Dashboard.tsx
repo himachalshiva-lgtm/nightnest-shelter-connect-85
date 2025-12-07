@@ -5,15 +5,20 @@ import { ShelterCard } from '@/components/ShelterCard';
 import { ScanButton } from '@/components/ScanButton';
 import { WristbandScanner } from '@/components/WristbandScanner';
 import { WristbandProfileView } from '@/components/WristbandProfile';
+import { TokenRewardPopup } from '@/components/TokenRewardPopup';
 import { mockDashboardStats, mockShelters } from '@/data/mockData';
 import { WristbandProfile } from '@/types/shelter';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useWristbandData } from '@/hooks/useWristbandData';
 
+const TOKENS_PER_SCAN = 50;
+
 export default function Dashboard() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [tokenPopupOpen, setTokenPopupOpen] = useState(false);
+  const [lastScannedId, setLastScannedId] = useState('');
   const [currentProfile, setCurrentProfile] = useState<WristbandProfile | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const { toast } = useToast();
@@ -42,13 +47,21 @@ export default function Dashboard() {
 
   const handleScan = async (wristbandId: string) => {
     setScannerOpen(false);
+    setLastScannedId(wristbandId);
+    
+    // Show token reward popup first
+    setTokenPopupOpen(true);
+  };
+
+  const handleTokenPopupClose = async () => {
+    setTokenPopupOpen(false);
     
     toast({
       title: "Looking up wristband...",
-      description: `Searching for ${wristbandId}`,
+      description: `Searching for ${lastScannedId}`,
     });
 
-    const profile = await getOrCreateWristband(wristbandId, userLocation || undefined);
+    const profile = await getOrCreateWristband(lastScannedId, userLocation || undefined);
     
     if (profile) {
       setCurrentProfile(profile);
@@ -156,6 +169,12 @@ export default function Dashboard() {
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onScan={handleScan}
+      />
+      <TokenRewardPopup
+        open={tokenPopupOpen}
+        onClose={handleTokenPopupClose}
+        tokens={TOKENS_PER_SCAN}
+        wristbandId={lastScannedId}
       />
       <WristbandProfileView
         profile={currentProfile}
