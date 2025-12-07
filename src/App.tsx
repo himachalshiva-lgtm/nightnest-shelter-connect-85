@@ -11,6 +11,7 @@ import MapView from "./pages/MapView";
 import Volunteers from "./pages/Volunteers";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import GenerateWristbands from "./pages/GenerateWristbands";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/map" element={<MapView />} />
             <Route path="/volunteers" element={<Volunteers />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/generate-wristbands" element={<GenerateWristbands />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

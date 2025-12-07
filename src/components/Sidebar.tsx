@@ -6,7 +6,8 @@ import {
   Users, 
   Settings, 
   LogOut,
-  Moon
+  Moon,
+  QrCode
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +16,7 @@ const navItems = [
   { icon: Building2, label: 'Shelters', path: '/shelters' },
   { icon: Map, label: 'Map View', path: '/map' },
   { icon: Users, label: 'Volunteers', path: '/volunteers' },
+  { icon: QrCode, label: 'Generate Wristbands', path: '/generate-wristbands' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
