@@ -12,13 +12,15 @@ import {
   Lock,
   Briefcase,
   Heart,
-  Shirt
+  Shirt,
+  Navigation
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { mockShelters } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-
+import { useToast } from '@/hooks/use-toast';
+import ShelterLocationMap from '@/components/ShelterLocationMap';
 const amenityIcons: Record<string, any> = {
   'WiFi': Wifi,
   'Showers': ShowerHead,
@@ -51,7 +53,27 @@ const statusConfig = {
 export default function ShelterDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const shelter = mockShelters.find(s => s.id === id);
+
+  const handleCall = () => {
+    window.open(`tel:${shelter?.phone}`);
+    toast({
+      title: "Calling Shelter",
+      description: `Initiating call to ${shelter?.phone}`,
+    });
+  };
+
+  const handleGetDirections = () => {
+    if (shelter) {
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${shelter.coordinates.lat},${shelter.coordinates.lng}`;
+      window.open(url, '_blank');
+      toast({
+        title: "Opening Directions",
+        description: `Getting directions to ${shelter.name}`,
+      });
+    }
+  };
 
   if (!shelter) {
     return (
@@ -94,11 +116,12 @@ export default function ShelterDetail() {
           </div>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleCall}>
             <Phone className="h-4 w-4 mr-2" />
             {shelter.phone}
           </Button>
-          <Button variant="scan">
+          <Button variant="scan" onClick={handleGetDirections}>
+            <Navigation className="h-4 w-4 mr-2" />
             Get Directions
           </Button>
         </div>
@@ -188,14 +211,15 @@ export default function ShelterDetail() {
           </div>
         </div>
 
-        {/* Map Placeholder */}
+        {/* Map */}
         <div className="stat-card">
           <h3 className="text-lg font-semibold text-foreground mb-4">Location</h3>
-          <div className="aspect-video rounded-xl bg-secondary flex items-center justify-center">
-            <div className="text-center">
-              <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Map integration coming soon</p>
-            </div>
+          <div className="aspect-video rounded-xl overflow-hidden">
+            <ShelterLocationMap 
+              coordinates={shelter.coordinates}
+              name={shelter.name}
+              address={shelter.address}
+            />
           </div>
         </div>
       </div>
