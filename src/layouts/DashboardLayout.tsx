@@ -1,16 +1,18 @@
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 export function DashboardLayout() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    try {
+      await signOut(auth);
+      navigate('/');
+    } catch (error) {
       console.error("Error signing out:", error);
     }
-    navigate('/');
   };
 
   return (
@@ -24,3 +26,4 @@ export function DashboardLayout() {
     </div>
   );
 }
+

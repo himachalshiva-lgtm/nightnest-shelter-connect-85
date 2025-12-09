@@ -1,10 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Moon, Mail, Lock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/lib/firebase";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink
+} from "firebase/auth";
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -14,38 +22,44 @@ export default function Login() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  useEffect(() => {
+    // Handle the email link sign-in if the user clicked the link
+    if (isSignInWithEmailLink(auth, window.location.href)) {
+      let emailForSignIn = window.localStorage.getItem('emailForSignIn');
+      if (!emailForSignIn) {
+        emailForSignIn = window.prompt('Please provide your email for confirmation');
+      }
+      if (emailForSignIn) {
+        signInWithEmailLink(auth, emailForSignIn, window.location.href)
+          .then(() => {
+            window.localStorage.removeItem('emailForSignIn');
+            toast({ title: "Success", description: "Successfully signed in with email link!" });
+            navigate('/dashboard');
+          })
+          .catch((error) => {
+            toast({ title: "Error", description: error.message, variant: "destructive" });
+          });
+      }
+    }
+  }, [navigate, toast]);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
       if (isSignUp) {
-        // Sign Up with Email and Password
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-
-        if (error) throw error;
+        // Sign Up
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await sendEmailVerification(userCredential.user);
 
         toast({
-          title: "Check your email",
-          description: "We've sent you a verification link to complete your registration.",
+          title: "Account Created",
+          description: "Please check your email to verify your account.",
         });
       } else {
         // Sign In
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) {
-          // Fallback to OTP if password fails or user requests it (optional, but requested "ask them for a otp which they will get from mail")
-          // Here we prioritize password, but let's add a "Login with OTP" button or flow if needed.
-          // For now, let's treat "verify email and ask for otp" as part of the flow.
-          throw error;
-        }
-
+        await signInWithEmailAndPassword(auth, email, password);
         toast({
           title: "Welcome back!",
           description: "You've successfully logged in.",
@@ -67,25 +81,33 @@ export default function Login() {
     if (!email) {
       toast({
         title: "Email required",
-        description: "Please enter your email to receive an OTP.",
+        description: "Please enter your email to receive a login link.",
         variant: "destructive"
       });
       return;
     }
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ email });
-    setIsLoading(false);
-    if (error) {
+
+    const actionCodeSettings = {
+      url: window.location.href, // Redirect back to this page
+      handleCodeInApp: true,
+    };
+
+    try {
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      window.localStorage.setItem('emailForSignIn', email);
+      toast({
+        title: "Link Sent",
+        description: "Check your email for the sign-in link."
+      });
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive"
       });
-    } else {
-      toast({
-        title: "OTP Sent",
-        description: "Check your email for the login code."
-      });
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -196,7 +218,7 @@ export default function Login() {
 
             {!isSignUp && (
               <Button variant="outline" type="button" className="w-full" onClick={handleOtpLogin} disabled={isLoading}>
-                Sign in with Magic Link / OTP
+                Sign in with Magic Link
               </Button>
             )}
           </form>

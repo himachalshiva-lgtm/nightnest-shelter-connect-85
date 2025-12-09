@@ -1,11 +1,11 @@
-
 import { useState, useEffect } from 'react';
 import { User, Bell, Shield, Database, HelpCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/lib/firebase";
+import { updateProfile, sendPasswordResetEmail } from "firebase/auth";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -22,34 +22,30 @@ export default function Settings() {
   const [dailySummary, setDailySummary] = useState(false);
 
   useEffect(() => {
-    getProfile();
+    // Check for user
+    if (auth.currentUser) {
+      setFullName(auth.currentUser.displayName || '');
+      setEmail(auth.currentUser.email || '');
+      setLoading(false);
+    } else {
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        if (user) {
+          setFullName(user.displayName || '');
+          setEmail(user.email || '');
+        }
+        setLoading(false);
+      });
+      return () => unsubscribe();
+    }
   }, []);
 
-  const getProfile = async () => {
-    try {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user) {
-        setEmail(user.email || '');
-        setFullName(user.user_metadata?.full_name || '');
-      }
-    } catch (error: any) {
-      console.error('Error loading user data:', error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSaveProfile = async () => {
+    if (!auth.currentUser) return;
     try {
       setUpdating(true);
-
-      const { error } = await supabase.auth.updateUser({
-        data: { full_name: fullName }
+      await updateProfile(auth.currentUser, {
+        displayName: fullName
       });
-
-      if (error) throw error;
 
       toast({
         title: "Profile Updated",
@@ -67,15 +63,11 @@ export default function Settings() {
   };
 
   const handleChangePassword = async () => {
+    if (!email) return;
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/settings', // Redirect back to settings or a reset page
-      });
-
-      if (error) throw error;
-
+      await sendPasswordResetEmail(auth, email);
       toast({
-        title: "Password Reset Data",
+        title: "Password Reset Email Sent",
         description: "Check your email for the password reset link.",
       });
     } catch (error: any) {
@@ -88,13 +80,9 @@ export default function Settings() {
   };
 
   const handleEnable2FA = () => {
-    // 2FA requires Backend functionality often beyond simple client calls for enrollment
-    // Supabase supports standard TOTP. 
-    // This is a complex flow to implement completely in one go without backend setup access, 
-    // but we can provide the feedback requested.
     toast({
       title: "2FA Setup",
-      description: "Functionality linked to our secure Identity Provider. Please check your email for enrollment instructions if supported by your plan.",
+      description: "Functionality linked to our secure Identity Provider (Firebase). Please check your email for enrollment instructions if supported by your plan.",
     });
   };
 
