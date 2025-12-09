@@ -21,9 +21,13 @@ export default function Login() {
     try {
       if (isSignUp) {
         // Sign Up with Email and Password
+        const redirectUrl = `${window.location.origin}/dashboard`;
         const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: redirectUrl
+          }
         });
 
         if (error) throw error;
