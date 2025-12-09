@@ -1,11 +1,15 @@
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
+import { supabase } from "@/integrations/supabase/client";
 
 export function DashboardLayout() {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.removeItem('nightnest_user');
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error signing out:", error);
+    }
     navigate('/');
   };
 
