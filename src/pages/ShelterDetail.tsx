@@ -66,7 +66,8 @@ export default function ShelterDetail() {
 
   const handleGetDirections = () => {
     if (shelter) {
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${shelter.coordinates.lat},${shelter.coordinates.lng}`;
+      // Use OpenStreetMap for directions (free alternative to Google Maps)
+      const url = `https://www.openstreetmap.org/directions?engine=osrm_car&route=;${shelter.coordinates.lat},${shelter.coordinates.lng}`;
       window.open(url, '_blank');
       toast({
         title: "Opening Directions",

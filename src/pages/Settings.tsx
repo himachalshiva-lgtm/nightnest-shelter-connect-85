@@ -311,7 +311,7 @@ export default function Settings() {
           </div>
         </div>
 
-        <Button variant="default" onClick={handleSaveProfile} disabled={updating}>
+        <Button type="button" variant="default" onClick={() => handleSaveProfile()} disabled={updating}>
           {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Save Changes
         </Button>
@@ -350,7 +350,7 @@ export default function Settings() {
           </div>
         </div>
 
-        <Button variant="outline" onClick={handleSaveNotifications} disabled={updating}>
+        <Button type="button" variant="outline" onClick={() => handleSaveNotifications()} disabled={updating}>
           {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Save Notification Preferences
         </Button>
@@ -366,7 +366,7 @@ export default function Settings() {
         </div>
 
         <div className="space-y-4">
-          <Button variant="outline" className="w-full justify-start" onClick={handleChangePassword}>
+          <Button type="button" variant="outline" className="w-full justify-start" onClick={() => handleChangePassword()}>
             Reset Password
           </Button>
           <div className="w-full">
@@ -393,7 +393,7 @@ export default function Settings() {
           NightNest is committed to privacy. We do not store personal identity data for individuals using our wristband system. All health notes are basic and non-invasive.
         </p>
 
-        <Button variant="outline" onClick={handleExportData} disabled={exporting}>
+        <Button type="button" variant="outline" onClick={() => handleExportData()} disabled={exporting}>
           {exporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Export My Data
         </Button>
@@ -409,8 +409,8 @@ export default function Settings() {
         </div>
 
         <div className="flex gap-3">
-          <Button variant="outline" onClick={handleViewDocs}>View Documentation</Button>
-          <Button variant="outline" onClick={handleContactSupport}>Contact Support</Button>
+          <Button type="button" variant="outline" onClick={() => handleViewDocs()}>View Documentation</Button>
+          <Button type="button" variant="outline" onClick={() => handleContactSupport()}>Contact Support</Button>
         </div>
       </div>
     </div>
