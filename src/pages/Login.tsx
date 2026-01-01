@@ -1,18 +1,26 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Moon, Mail, Lock, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Moon, Mail, Lock, ArrowRight, UserPlus, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from '@/hooks/use-auth';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn, signUp, user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,46 +28,54 @@ export default function Login() {
 
     try {
       if (isSignUp) {
-        // Sign Up with Email and Password
-        const redirectUrl = `${window.location.origin}/dashboard`;
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectUrl
-          }
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Check your email",
-          description: "We've sent you a verification link to complete your registration.",
-        });
-      } else {
-        // Sign In
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) {
-          // Fallback to OTP if password fails or user requests it (optional, but requested "ask them for a otp which they will get from mail")
-          // Here we prioritize password, but let's add a "Login with OTP" button or flow if needed.
-          // For now, let's treat "verify email and ask for otp" as part of the flow.
-          throw error;
+        // Sign up
+        if (!fullName.trim()) {
+          toast({
+            title: "Error",
+            description: "Please enter your full name.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
         }
 
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully logged in.",
-        });
-        navigate('/dashboard');
+        const { error } = await signUp(email, password, fullName);
+
+        if (error) {
+          toast({
+            title: "Sign Up Failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Account Created!",
+            description: "Please check your email to verify your account.",
+          });
+          setIsSignUp(false);
+        }
+      } else {
+        // Sign in
+        const { error } = await signIn(email, password);
+
+        if (error) {
+          toast({
+            title: "Sign In Failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Welcome back!",
+            description: "You've successfully logged in.",
+          });
+          navigate('/dashboard');
+        }
       }
-    } catch (error: any) {
+    } catch (err) {
       toast({
         title: "Error",
-        description: error.message,
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -68,29 +84,14 @@ export default function Login() {
   };
 
   const handleOtpLogin = async () => {
-    if (!email) {
-      toast({
-        title: "Email required",
-        description: "Please enter your email to receive an OTP.",
-        variant: "destructive"
-      });
-      return;
-    }
-    setIsLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ email });
-    setIsLoading(false);
-    if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    } else {
-      toast({
-        title: "OTP Sent",
-        description: "Check your email for the login code."
-      });
-    }
+    // Note: OTP Login requires supabase or advanced firebase setup. 
+    // For now we will disable or show potential error if firebase logic isn't there, 
+    // but preserving the UI as requested.
+    toast({
+      title: "Feature unavailable",
+      description: "OTP login is not yet configured for Firebase.",
+      variant: "destructive"
+    });
   }
 
   return (
@@ -141,16 +142,56 @@ export default function Login() {
             <span className="text-2xl font-bold text-foreground">NightNest</span>
           </div>
 
+          {/* Toggle Tabs */}
+          <div className="flex bg-secondary rounded-lg p-1 mb-8">
+            <button
+              onClick={() => setIsSignUp(false)}
+              className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${!isSignUp
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <LogIn className="h-4 w-4" />
+              Sign In
+            </button>
+            <button
+              onClick={() => setIsSignUp(true)}
+              className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${isSignUp
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <UserPlus className="h-4 w-4" />
+              Sign Up
+            </button>
+          </div>
+
           <div className="space-y-2 mb-8">
             <h2 className="text-2xl font-bold text-foreground">
-              {isSignUp ? "Create an account" : "Welcome back"}
+              {isSignUp ? 'Create an account' : 'Welcome back'}
             </h2>
             <p className="text-muted-foreground">
-              {isSignUp ? "Enter your details to get started" : "Sign in to access your shelter dashboard"}
+              {isSignUp
+                ? 'Get started with NightNest shelter management'
+                : 'Sign in to access your shelter dashboard'
+              }
             </p>
           </div>
 
-          <form onSubmit={handleAuth} className="space-y-6">
+          <form onSubmit={handleAuth} className="space-y-5">
+            {isSignUp && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Full Name</label>
+                <Input
+                  type="text"
+                  placeholder="John Doe"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="h-12 bg-secondary border-border"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Email</label>
               <div className="relative">
@@ -167,7 +208,17 @@ export default function Login() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Password</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-foreground">Password</label>
+                {!isSignUp && (
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                )}
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
@@ -179,6 +230,11 @@ export default function Login() {
                   required
                 />
               </div>
+              {isSignUp && (
+                <p className="text-xs text-muted-foreground">
+                  Password must be at least 6 characters
+                </p>
+              )}
             </div>
 
             <Button
@@ -192,7 +248,7 @@ export default function Login() {
                 <div className="h-5 w-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  {isSignUp ? "Sign Up" : "Sign In"}
+                  {isSignUp ? 'Create Account' : 'Sign In'}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </>
               )}
@@ -205,18 +261,28 @@ export default function Login() {
             )}
           </form>
 
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-primary hover:underline hover:text-primary/90 transition-colors"
-            >
-              {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
-            </button>
-          </div>
-
           <p className="mt-8 text-center text-sm text-muted-foreground">
-            Note: Volunteers and Shelters data in the dashboard is currently simulated for demonstration.
+            {isSignUp ? (
+              <>
+                Already have an account?{' '}
+                <button
+                  onClick={() => setIsSignUp(false)}
+                  className="text-primary hover:underline font-medium"
+                >
+                  Sign in
+                </button>
+              </>
+            ) : (
+              <>
+                Don't have an account?{' '}
+                <button
+                  onClick={() => setIsSignUp(true)}
+                  className="text-primary hover:underline font-medium"
+                >
+                  Sign up
+                </button>
+              </>
+            )}
           </p>
         </div>
       </div>

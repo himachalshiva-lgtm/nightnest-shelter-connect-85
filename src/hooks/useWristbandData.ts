@@ -1,5 +1,20 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/config';
+import {
+  collection,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  addDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore';
 import { WristbandProfile, Shelter } from '@/types/shelter';
 import { getRecommendedShelter } from '@/lib/geoUtils';
 import { mockShelters } from '@/data/mockData';
@@ -7,12 +22,19 @@ import { mockShelters } from '@/data/mockData';
 interface WristbandRecord {
   id: string;
   wristband_id: string;
-  last_check_in: string | null;
+  last_check_in: Timestamp | null;
   last_shelter_name: string | null;
   health_notes: string[];
   check_in_count: number;
-  created_at: string;
-  updated_at: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+interface CheckInHistoryRecord {
+  wristband_id: string;
+  shelter_id: string;
+  shelter_name: string;
+  check_in_time: Timestamp;
 }
 
 export function useWristbandData() {
@@ -29,28 +51,21 @@ export function useWristbandData() {
 
     try {
       // Try to fetch existing wristband
-      const { data: existing, error: fetchError } = await supabase
-        .from('wristbands')
-        .select('*')
-        .eq('wristband_id', wristbandId)
-        .maybeSingle();
-
-      if (fetchError) {
-        throw new Error(fetchError.message);
-      }
+      const wristbandRef = doc(db, 'wristbands', wristbandId);
+      const wristbandSnap = await getDoc(wristbandRef);
 
       const recommendedShelter = getRecommendedShelter(
         userLocation || { lat: 40.7580, lng: -73.9855 },
         mockShelters
       );
 
-      if (existing) {
+      if (wristbandSnap.exists()) {
         // Return existing wristband as profile
-        const record = existing as WristbandRecord;
+        const record = wristbandSnap.data() as WristbandRecord;
         return {
-          id: record.id,
+          id: wristbandSnap.id,
           wristbandId: record.wristband_id,
-          lastCheckIn: record.last_check_in?.split('T')[0] || undefined,
+          lastCheckIn: record.last_check_in?.toDate().toISOString().split('T')[0] || undefined,
           lastShelter: record.last_shelter_name || undefined,
           healthNotes: record.health_notes || [],
           checkInCount: record.check_in_count,
@@ -59,27 +74,24 @@ export function useWristbandData() {
       }
 
       // Create new wristband
-      const { data: newWristband, error: insertError } = await supabase
-        .from('wristbands')
-        .insert({
-          wristband_id: wristbandId,
-          health_notes: ['No known allergies', 'New registration'],
-          check_in_count: 0,
-        })
-        .select()
-        .single();
+      const newWristband = {
+        wristband_id: wristbandId,
+        health_notes: ['No known allergies', 'New registration'],
+        check_in_count: 0,
+        last_check_in: null,
+        last_shelter_name: null,
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+      };
 
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
+      await setDoc(wristbandRef, newWristband);
 
-      const newRecord = newWristband as WristbandRecord;
       return {
-        id: newRecord.id,
-        wristbandId: newRecord.wristband_id,
+        id: wristbandId,
+        wristbandId: wristbandId,
         lastCheckIn: undefined,
         lastShelter: undefined,
-        healthNotes: newRecord.health_notes || [],
+        healthNotes: ['No known allergies', 'New registration'],
         checkInCount: 0,
         recommendedShelter,
       };
@@ -103,39 +115,28 @@ export function useWristbandData() {
 
     try {
       // Insert check-in history
-      const { error: historyError } = await supabase
-        .from('check_in_history')
-        .insert({
-          wristband_id: wristbandId,
-          shelter_id: shelter.id,
-          shelter_name: shelter.name,
-        });
+      const checkInHistoryRef = collection(db, 'check_in_history');
+      await addDoc(checkInHistoryRef, {
+        wristband_id: wristbandId,
+        shelter_id: shelter.id,
+        shelter_name: shelter.name,
+        check_in_time: serverTimestamp(),
+      });
 
-      if (historyError) {
-        throw new Error(historyError.message);
-      }
+      // Get current wristband data
+      const wristbandRef = doc(db, 'wristbands', wristbandId);
+      const wristbandSnap = await getDoc(wristbandRef);
+      const currentCount = wristbandSnap.exists()
+        ? (wristbandSnap.data() as WristbandRecord).check_in_count || 0
+        : 0;
 
       // Update wristband record
-      const { data: current } = await supabase
-        .from('wristbands')
-        .select('check_in_count')
-        .eq('wristband_id', wristbandId)
-        .single();
-
-      const currentCount = (current as { check_in_count: number } | null)?.check_in_count || 0;
-
-      const { error: updateError } = await supabase
-        .from('wristbands')
-        .update({
-          last_check_in: new Date().toISOString(),
-          last_shelter_name: shelter.name,
-          check_in_count: currentCount + 1,
-        })
-        .eq('wristband_id', wristbandId);
-
-      if (updateError) {
-        throw new Error(updateError.message);
-      }
+      await updateDoc(wristbandRef, {
+        last_check_in: serverTimestamp(),
+        last_shelter_name: shelter.name,
+        check_in_count: currentCount + 1,
+        updated_at: serverTimestamp(),
+      });
 
       return true;
     } catch (err) {
@@ -154,18 +155,27 @@ export function useWristbandData() {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('check_in_history')
-        .select('*')
-        .eq('wristband_id', wristbandId)
-        .order('check_in_time', { ascending: false })
-        .limit(10);
+      const historyRef = collection(db, 'check_in_history');
+      const q = query(
+        historyRef,
+        where('wristband_id', '==', wristbandId),
+        orderBy('check_in_time', 'desc'),
+        limit(10)
+      );
 
-      if (fetchError) {
-        throw new Error(fetchError.message);
-      }
+      const querySnapshot = await getDocs(q);
+      const history: any[] = [];
 
-      return data || [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as CheckInHistoryRecord;
+        history.push({
+          id: doc.id,
+          ...data,
+          check_in_time: data.check_in_time?.toDate().toISOString(),
+        });
+      });
+
+      return history;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch history';
       setError(message);
