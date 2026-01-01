@@ -7,18 +7,11 @@ import {
   Settings, 
   LogOut,
   Moon,
-  QrCode
+  QrCode,
+  Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: Building2, label: 'Shelters', path: '/shelters' },
-  { icon: Map, label: 'Map View', path: '/map' },
-  { icon: Users, label: 'Volunteers', path: '/volunteers' },
-  { icon: QrCode, label: 'Generate Wristbands', path: '/generate-wristbands' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
-];
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -26,6 +19,22 @@ interface SidebarProps {
 
 export function Sidebar({ onLogout }: SidebarProps) {
   const location = useLocation();
+  const { isAdmin, role } = useAuthContext();
+
+  const navItems = [
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', showAlways: true },
+    { icon: Shield, label: 'Admin Dashboard', path: '/admin', adminOnly: true },
+    { icon: Building2, label: 'Shelters', path: '/shelters', showAlways: true },
+    { icon: Map, label: 'Map View', path: '/map', showAlways: true },
+    { icon: Users, label: 'Volunteers', path: '/volunteers', showAlways: true },
+    { icon: QrCode, label: 'Generate Wristbands', path: '/generate-wristbands', showAlways: true },
+    { icon: Settings, label: 'Settings', path: '/settings', showAlways: true },
+  ];
+
+  const filteredNavItems = navItems.filter(item => {
+    if (item.adminOnly) return isAdmin;
+    return item.showAlways;
+  });
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-sidebar">
@@ -38,9 +47,21 @@ export function Sidebar({ onLogout }: SidebarProps) {
           <span className="text-xl font-bold text-foreground">NightNest</span>
         </div>
 
+        {/* Role Badge */}
+        {role && (
+          <div className="px-6 py-3 border-b border-border">
+            <span className={cn(
+              "text-xs font-medium px-2 py-1 rounded-full",
+              isAdmin ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
+            )}>
+              {isAdmin ? 'Shelter Admin' : 'Staff'}
+            </span>
+          </div>
+        )}
+
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-4">
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <NavLink

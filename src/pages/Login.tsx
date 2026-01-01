@@ -1,18 +1,53 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Moon, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Moon, Mail, Lock, ArrowRight, Building2, UserCog, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from '@/components/ui/label';
+
+interface Shelter {
+  id: string;
+  name: string;
+  address: string;
+}
+
+type RoleType = 'staff' | 'admin';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<RoleType>('staff');
+  const [selectedShelterId, setSelectedShelterId] = useState<string>('');
+  const [shelters, setShelters] = useState<Shelter[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Fetch shelters for admin signup
+  useEffect(() => {
+    async function fetchShelters() {
+      const { data, error } = await supabase
+        .from('shelters')
+        .select('id, name, address')
+        .order('name');
+      
+      if (!error && data) {
+        setShelters(data);
+      }
+    }
+    fetchShelters();
+  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,35 +55,72 @@ export default function Login() {
 
     try {
       if (isSignUp) {
-        // Sign Up with Email and Password
+        // Validate admin requires shelter
+        if (selectedRole === 'admin' && !selectedShelterId) {
+          toast({
+            title: "Shelter Required",
+            description: "Please select a shelter to manage as an admin.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+
         const redirectUrl = `${window.location.origin}/dashboard`;
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: redirectUrl
+            emailRedirectTo: redirectUrl,
+            data: {
+              full_name: fullName,
+            }
           }
         });
 
-        if (error) throw error;
+        if (signUpError) throw signUpError;
+
+        if (signUpData.user) {
+          // Create user role
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: signUpData.user.id,
+              role: selectedRole,
+            });
+
+          if (roleError) {
+            console.error('Error creating role:', roleError);
+          }
+
+          // Update profile with shelter if admin
+          if (selectedRole === 'admin' && selectedShelterId) {
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .update({ 
+                shelter_id: selectedShelterId,
+                full_name: fullName 
+              })
+              .eq('id', signUpData.user.id);
+
+            if (profileError) {
+              console.error('Error updating profile:', profileError);
+            }
+          }
+        }
 
         toast({
-          title: "Check your email",
-          description: "We've sent you a verification link to complete your registration.",
+          title: "Account created!",
+          description: "You can now sign in with your credentials.",
         });
+        setIsSignUp(false);
       } else {
-        // Sign In
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (error) {
-          // Fallback to OTP if password fails or user requests it (optional, but requested "ask them for a otp which they will get from mail")
-          // Here we prioritize password, but let's add a "Login with OTP" button or flow if needed.
-          // For now, let's treat "verify email and ask for otp" as part of the flow.
-          throw error;
-        }
+        if (error) throw error;
 
         toast({
           title: "Welcome back!",
@@ -150,9 +222,23 @@ export default function Login() {
             </p>
           </div>
 
-          <form onSubmit={handleAuth} className="space-y-6">
+          <form onSubmit={handleAuth} className="space-y-5">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label>Full Name</Label>
+                <Input
+                  type="text"
+                  placeholder="John Doe"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="h-12 bg-secondary border-border"
+                  required
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Email</label>
+              <Label>Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
@@ -167,7 +253,7 @@ export default function Login() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Password</label>
+              <Label>Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
@@ -177,9 +263,65 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 h-12 bg-secondary border-border"
                   required
+                  minLength={6}
                 />
               </div>
             </div>
+
+            {isSignUp && (
+              <>
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRole('staff')}
+                      className={`flex items-center gap-2 p-3 rounded-lg border transition-all ${
+                        selectedRole === 'staff'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-secondary text-muted-foreground hover:border-primary/50'
+                      }`}
+                    >
+                      <Users className="h-5 w-5" />
+                      <span className="font-medium">Staff</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRole('admin')}
+                      className={`flex items-center gap-2 p-3 rounded-lg border transition-all ${
+                        selectedRole === 'admin'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-secondary text-muted-foreground hover:border-primary/50'
+                      }`}
+                    >
+                      <UserCog className="h-5 w-5" />
+                      <span className="font-medium">Shelter Admin</span>
+                    </button>
+                  </div>
+                </div>
+
+                {selectedRole === 'admin' && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Select Your Shelter
+                    </Label>
+                    <Select value={selectedShelterId} onValueChange={setSelectedShelterId}>
+                      <SelectTrigger className="h-12 bg-secondary border-border">
+                        <SelectValue placeholder="Choose a shelter to manage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shelters.map((shelter) => (
+                          <SelectItem key={shelter.id} value={shelter.id}>
+                            {shelter.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </>
+            )}
 
             <Button
               type="submit"
@@ -216,7 +358,10 @@ export default function Login() {
           </div>
 
           <p className="mt-8 text-center text-sm text-muted-foreground">
-            Note: Volunteers and Shelters data in the dashboard is currently simulated for demonstration.
+            {isSignUp 
+              ? "Staff: Basic operations. Shelter Admin: Full management access."
+              : "Note: Volunteers and Shelters data in the dashboard is currently simulated for demonstration."
+            }
           </p>
         </div>
       </div>

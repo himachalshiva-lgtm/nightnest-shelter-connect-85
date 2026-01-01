@@ -44,6 +44,77 @@ export type Database = {
         }
         Relationships: []
       }
+      ngo_stock: {
+        Row: {
+          created_at: string
+          id: string
+          item_type: string
+          last_updated: string
+          ngo_id: string
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_type: string
+          last_updated?: string
+          ngo_id: string
+          quantity?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_type?: string
+          last_updated?: string
+          ngo_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ngo_stock_ngo_id_fkey"
+            columns: ["ngo_id"]
+            isOneToOne: false
+            referencedRelation: "ngos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ngos: {
+        Row: {
+          contact_email: string | null
+          contact_phone: string | null
+          coverage_area: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          service_types: string[]
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          coverage_area?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          service_types?: string[]
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          coverage_area?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          service_types?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           assigned_shelter: string | null
@@ -52,6 +123,7 @@ export type Database = {
           full_name: string | null
           id: string
           low_bed_alerts: boolean | null
+          shelter_id: string | null
           updated_at: string
           volunteer_shortage_alerts: boolean | null
         }
@@ -62,6 +134,7 @@ export type Database = {
           full_name?: string | null
           id: string
           low_bed_alerts?: boolean | null
+          shelter_id?: string | null
           updated_at?: string
           volunteer_shortage_alerts?: boolean | null
         }
@@ -72,10 +145,163 @@ export type Database = {
           full_name?: string | null
           id?: string
           low_bed_alerts?: boolean | null
+          shelter_id?: string | null
           updated_at?: string
           volunteer_shortage_alerts?: boolean | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_shelter_id_fkey"
+            columns: ["shelter_id"]
+            isOneToOne: false
+            referencedRelation: "shelters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shelter_ngo_assignments: {
+        Row: {
+          assigned_date: string
+          created_at: string
+          created_by: string | null
+          id: string
+          ngo_id: string
+          notes: string | null
+          services_assigned: string[]
+          shelter_id: string
+        }
+        Insert: {
+          assigned_date?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          ngo_id: string
+          notes?: string | null
+          services_assigned?: string[]
+          shelter_id: string
+        }
+        Update: {
+          assigned_date?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          ngo_id?: string
+          notes?: string | null
+          services_assigned?: string[]
+          shelter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shelter_ngo_assignments_ngo_id_fkey"
+            columns: ["ngo_id"]
+            isOneToOne: false
+            referencedRelation: "ngos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shelter_ngo_assignments_shelter_id_fkey"
+            columns: ["shelter_id"]
+            isOneToOne: false
+            referencedRelation: "shelters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shelters: {
+        Row: {
+          address: string
+          check_in_time: string | null
+          check_out_time: string | null
+          city: string
+          coordinates_lat: number | null
+          coordinates_lng: number | null
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+          total_beds: number
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          check_in_time?: string | null
+          check_out_time?: string | null
+          city?: string
+          coordinates_lat?: number | null
+          coordinates_lng?: number | null
+          created_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+          total_beds?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          check_in_time?: string | null
+          check_out_time?: string | null
+          city?: string
+          coordinates_lat?: number | null
+          coordinates_lng?: number | null
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          total_beds?: number
+          updated_at?: string
+        }
         Relationships: []
+      }
+      stock_received_logs: {
+        Row: {
+          created_at: string
+          id: string
+          item_type: string
+          logged_by: string | null
+          ngo_id: string
+          notes: string | null
+          quantity: number
+          received_date: string
+          shelter_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_type: string
+          logged_by?: string | null
+          ngo_id: string
+          notes?: string | null
+          quantity: number
+          received_date?: string
+          shelter_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_type?: string
+          logged_by?: string | null
+          ngo_id?: string
+          notes?: string | null
+          quantity?: number
+          received_date?: string
+          shelter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_received_logs_ngo_id_fkey"
+            columns: ["ngo_id"]
+            isOneToOne: false
+            referencedRelation: "ngos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_received_logs_shelter_id_fkey"
+            columns: ["shelter_id"]
+            isOneToOne: false
+            referencedRelation: "shelters"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
