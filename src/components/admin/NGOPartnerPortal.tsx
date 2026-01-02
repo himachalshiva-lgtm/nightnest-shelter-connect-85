@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Search, Plus, Package, History, Handshake, Phone, Mail, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
+import { AIResourceAllocation } from './AIResourceAllocation';
 
 interface NGOPartnerPortalProps {
   shelterId: string;
@@ -562,6 +563,22 @@ export function NGOPartnerPortal({ shelterId, shelterName }: NGOPartnerPortalPro
           </Card>
         </div>
       </div>
+
+      {/* AI Resource Allocation Section */}
+      <AIResourceAllocation
+        shelters={[{
+          id: shelterId,
+          name: shelterName,
+          totalBeds: 100, // This would come from props in a real implementation
+          currentOccupancy: 65,
+          coordinates: { lat: 28.6129, lng: 77.2295 },
+        }]}
+        ngoStock={stocks.map(s => ({
+          ngoName: ngos.find(n => n.id === s.ngo_id)?.name || 'Unknown NGO',
+          itemType: s.item_type,
+          quantity: s.quantity,
+        }))}
+      />
     </div>
   );
 }
