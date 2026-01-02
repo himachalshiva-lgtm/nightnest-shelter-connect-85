@@ -42,8 +42,8 @@ export default function LeafletMap({
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    // Center on NYC area (where mock shelters are located)
-    const center: [number, number] = [40.73, -73.95];
+    // Center on Delhi, India (where government school shelters are located)
+    const center: [number, number] = [28.6129, 77.2295];
 
     map.current = L.map(mapContainer.current, {
       center,

@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import LeafletMap from '@/components/LeafletMap';
 import { calculateDistance, formatDistance, getNearestShelters } from '@/lib/geoUtils';
 import { toast } from 'sonner';
+import { AISafeRoute } from '@/components/AISafeRoute';
 
 const statusConfig = {
   available: {
@@ -53,17 +54,17 @@ export default function MapView() {
         },
         (error) => {
           console.error('Error getting location:', error);
-          // Use mock NYC location as fallback
-          setUserLocation({ lat: 40.7484, lng: -73.9857 });
+          // Use Delhi, India location as fallback
+          setUserLocation({ lat: 28.6129, lng: 77.2295 });
           setIsLocating(false);
-          toast.info('Using default location (NYC)');
+          toast.info('Using default location (Delhi)');
         },
         { enableHighAccuracy: true }
       );
     } else {
-      setUserLocation({ lat: 40.7484, lng: -73.9857 });
+      setUserLocation({ lat: 28.6129, lng: 77.2295 });
       setIsLocating(false);
-      toast.info('Geolocation not supported, using default location');
+      toast.info('Geolocation not supported, using default location (Delhi)');
     }
   };
 
@@ -80,10 +81,10 @@ export default function MapView() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Map View</h1>
-          <p className="text-muted-foreground mt-1">Real-time shelter locations with GPS navigation</p>
-        </div>
-        <Button
-          variant="outline"
+      <p className="text-muted-foreground mt-1">Find government school shelters in Delhi with AI-powered safe routing</p>
+    </div>
+    <Button
+      variant="outline"
           size="sm"
           onClick={handleGetLocation}
           disabled={isLocating}
@@ -93,10 +94,10 @@ export default function MapView() {
         </Button>
       </div>
 
-      {/* Free Map Notice */}
+      {/* India Map Notice */}
       <div className="p-3 rounded-lg bg-success/10 border border-success/20">
         <p className="text-sm text-success">
-          ✓ Using OpenStreetMap - completely free, no API key required!
+          ✓ Showing Delhi government schools converted to night shelters - Using OpenStreetMap (free)
         </p>
       </div>
 
@@ -222,6 +223,16 @@ export default function MapView() {
               <p className="text-muted-foreground">Select a shelter marker to view details</p>
             </div>
           )}
+
+          {/* AI Safe Route Finder */}
+          <AISafeRoute
+            userLocation={userLocation}
+            shelters={mockShelters}
+            onSelectShelter={(shelter) => {
+              setSelectedShelter(shelter);
+              setShowRoute(true);
+            }}
+          />
 
           {/* Nearest Shelters List */}
           <div className="space-y-2">
