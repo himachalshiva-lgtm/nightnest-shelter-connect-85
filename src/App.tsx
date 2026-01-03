@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import NGOPortal from "./pages/NGOPortal";
 import Shelters from "./pages/Shelters";
 import ShelterDetail from "./pages/ShelterDetail";
 import MapView from "./pages/MapView";
@@ -33,6 +34,7 @@ const App = () => (
             <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/ngo-portal" element={<ProtectedRoute requiredRole="admin"><NGOPortal /></ProtectedRoute>} />
               <Route path="/shelters" element={<Shelters />} />
               <Route path="/shelters/:id" element={<ShelterDetail />} />
               <Route path="/map" element={<MapView />} />
