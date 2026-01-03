@@ -66,17 +66,12 @@ export default function ShelterDetail() {
 
   const handleGetDirections = () => {
     if (shelter) {
-      // Create a link and trigger navigation (avoids popup blockers)
-      const link = document.createElement('a');
-      link.href = `https://www.openstreetmap.org/?mlat=${shelter.coordinates.lat}&mlon=${shelter.coordinates.lng}#map=16/${shelter.coordinates.lat}/${shelter.coordinates.lng}`;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Use Google Maps for directions (more reliable than OpenStreetMap)
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${shelter.coordinates.lat},${shelter.coordinates.lng}&destination_place_id=${encodeURIComponent(shelter.name)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
       
       toast({
-        title: "Opening Directions",
+        title: "Opening Google Maps",
         description: `Getting directions to ${shelter.name}`,
       });
     }

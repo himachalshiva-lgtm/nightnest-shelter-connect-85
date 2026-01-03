@@ -8,7 +8,8 @@ import {
   LogOut,
   Moon,
   QrCode,
-  Shield
+  Shield,
+  Handshake
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -24,6 +25,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', showAlways: true },
     { icon: Shield, label: 'Admin Dashboard', path: '/admin', adminOnly: true },
+    { icon: Handshake, label: 'NGO Portal', path: '/ngo-portal', adminOnly: true },
     { icon: Building2, label: 'Shelters', path: '/shelters', showAlways: true },
     { icon: Map, label: 'Map View', path: '/map', showAlways: true },
     { icon: Users, label: 'Volunteers', path: '/volunteers', showAlways: true },
