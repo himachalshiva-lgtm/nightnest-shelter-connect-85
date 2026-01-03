@@ -11,6 +11,7 @@ import NGOPortal from "./pages/NGOPortal";
 import Shelters from "./pages/Shelters";
 import ShelterDetail from "./pages/ShelterDetail";
 import MapView from "./pages/MapView";
+import SafeRouteFinder from "./pages/SafeRouteFinder";
 import Volunteers from "./pages/Volunteers";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/shelters" element={<Shelters />} />
               <Route path="/shelters/:id" element={<ShelterDetail />} />
               <Route path="/map" element={<MapView />} />
+              <Route path="/safe-route" element={<SafeRouteFinder />} />
               <Route path="/volunteers" element={<Volunteers />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/generate-wristbands" element={<GenerateWristbands />} />
